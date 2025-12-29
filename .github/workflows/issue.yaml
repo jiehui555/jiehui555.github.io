@@ -34,13 +34,29 @@ jobs:
           echo "Issue Created At: ${{ github.event.issue.created_at }}"
           echo "Issue Updated At: ${{ github.event.issue.updated_at }}"
 
-      # 文章 slug 为 issue 创建的年月日-issueid，issueid最小为4位数不够则前面补零
       - name: Generate Post Slug
         id: generate_post_slug
         run: |
-          created_at=$(date -d "${{ github.event.issue.created_at }}" +%Y-%m-%d)
+          created_at=$(date -d "${{ github.event.issue.created_at }}" +%Y%m%d)
           issue_number=$(printf "%04d" ${{ github.event.issue.number }})
-          slug="${created_at}-${issue_number}"
-          
-          echo "Generated slug: $slug"  # 这行会直接打印到 Actions 日志中
-          echo "slug=$slug" >> $GITHUB_OUTPUT
+          echo "slug=${created_at}_issue_${issue_number}" >> $GITHUB_OUTPUT
+      
+      - name: Make Post Directory
+        id: make_post_directory
+        run: |
+          path="content/posts/${{ steps.generate_post_slug.outputs.slug }}"
+          mkdir -p $path
+          echo "path=${path}" >> $GITHUB_OUTPUT
+
+      - name: Download Issue Images
+        id: download_issue_images
+        run: |
+          content="${{ github.event.issue.body }}"
+          echo "${{ github.event.issue.body }}" | grep -o 'https://github\.com/user-attachments/assets/[a-f0-9-]\{36\}' | while read url; do
+              filename="${{ steps.make_post_directory.outputs.path }}/$(basename "$url").png"
+              curl -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "$filename" "$url"
+              content=$(echo "$content" | sed "s|$url|${filename}|g")
+          done
+          ls -alh "${{ steps.make_post_directory.outputs.path }}"
+          echo "content=${content}" >> $GITHUB_OUTPUT
+          echo $content
