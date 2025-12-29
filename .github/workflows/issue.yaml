@@ -33,3 +33,14 @@ jobs:
           echo "Issue Body: ${{ github.event.issue.body }}"
           echo "Issue Created At: ${{ github.event.issue.created_at }}"
           echo "Issue Updated At: ${{ github.event.issue.updated_at }}"
+
+      # 文章 slug 为 issue 创建的年月日-issueid，issueid最小为4位数不够则前面补零
+      - name: Generate Post Slug
+        id: generate_post_slug
+        run: |
+          created_at=$(date -d "${{ github.event.issue.created_at }}" +%Y-%m-%d)
+          issue_number=$(printf "%04d" ${{ github.event.issue.number }})
+          slug="${created_at}-${issue_number}"
+          
+          echo "Generated slug: $slug"  # 这行会直接打印到 Actions 日志中
+          echo "slug=$slug" >> $GITHUB_OUTPUT
